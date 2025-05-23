@@ -21,6 +21,13 @@
     #sidebar h2 {
       margin-top: 0;
     }
+    #searchBar {
+      width: 100%;
+      padding: 6px;
+      margin-bottom: 10px;
+      border: none;
+      border-radius: 4px;
+    }
     #criminalList li {
       cursor: pointer;
       margin: 10px 0;
@@ -64,12 +71,22 @@
       border: none;
       cursor: pointer;
     }
+    #downloadBtn {
+      margin-top: 10px;
+      padding: 8px;
+      background: #16a085;
+      color: white;
+      border: none;
+      cursor: pointer;
+      width: 100%;
+    }
   </style>
 </head>
 <body>
 
   <div id="sidebar">
     <h2>Criminals</h2>
+    <input type="text" id="searchBar" placeholder="Search by name...">
     <ul id="criminalList"></ul>
   </div>
 
@@ -89,6 +106,7 @@
     <h3 id="popupName"></h3>
     <p><strong>Crime:</strong> <span id="popupCrime"></span></p>
     <p id="popupDetails"></p>
+    <button id="downloadBtn">Download Info</button>
   </div>
 
   <script>
@@ -98,6 +116,44 @@
     const popupName = document.getElementById("popupName");
     const popupCrime = document.getElementById("popupCrime");
     const popupDetails = document.getElementById("popupDetails");
+    const searchBar = document.getElementById("searchBar");
+    const downloadBtn = document.getElementById("downloadBtn");
+
+    let allCriminals = JSON.parse(localStorage.getItem("criminals")) || [];
+
+    function renderList() {
+      const filter = searchBar.value.toLowerCase();
+      criminalList.innerHTML = "";
+      allCriminals
+        .filter(c => c.name.toLowerCase().includes(filter))
+        .forEach(c => {
+          const li = document.createElement("li");
+          li.textContent = c.name;
+          li.dataset.crime = c.crime;
+          li.dataset.details = c.details;
+          li.dataset.image = c.image;
+
+          li.addEventListener("click", function() {
+            popup.style.display = "block";
+            popupName.textContent = c.name;
+            popupCrime.textContent = c.crime;
+            popupDetails.textContent = c.details;
+            popupImage.src = c.image;
+            downloadBtn.onclick = () => {
+              const content = `Name: ${c.name}\nCrime: ${c.crime}\nDetails: ${c.details}`;
+              const blob = new Blob([content], { type: 'text/plain' });
+              const url = URL.createObjectURL(blob);
+              const a = document.createElement("a");
+              a.href = url;
+              a.download = `${c.name.replace(/\s+/g, "_")}_info.txt`;
+              a.click();
+              URL.revokeObjectURL(url);
+            };
+          });
+
+          criminalList.appendChild(li);
+        });
+    }
 
     document.getElementById("criminalForm").addEventListener("submit", function(e) {
       e.preventDefault();
@@ -113,26 +169,18 @@
       reader.onload = function() {
         const imageUrl = reader.result;
 
-        const li = document.createElement("li");
-        li.textContent = name;
-        li.dataset.crime = crime;
-        li.dataset.details = details;
-        li.dataset.image = imageUrl;
-
-        li.addEventListener("click", function() {
-          popup.style.display = "block";
-          popupName.textContent = this.textContent;
-          popupCrime.textContent = this.dataset.crime;
-          popupDetails.textContent = this.dataset.details;
-          popupImage.src = this.dataset.image;
-        });
-
-        criminalList.appendChild(li);
+        const criminal = { name, crime, details, image: imageUrl };
+        allCriminals.push(criminal);
+        localStorage.setItem("criminals", JSON.stringify(allCriminals));
+        renderList();
+        document.getElementById("criminalForm").reset();
       };
       reader.readAsDataURL(imageInput.files[0]);
-
-      this.reset();
     });
+
+    searchBar.addEventListener("input", renderList);
+
+    renderList();
   </script>
 
 </body>
